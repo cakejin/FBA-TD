@@ -66,6 +66,7 @@ class OrderBookUpdate:
     is_snapshot: bool = False
     is_valid: bool = False
 
+
 @dataclass
 class Config:
     """System configuration"""
@@ -93,6 +94,7 @@ class Config:
         return cls(**filtered)
     
 
+
 @dataclass
 class Metrics:
     """Pipeline metrics"""
@@ -117,9 +119,11 @@ class Metrics:
     def max_latency_ms(self) -> float:
         return self.latency_max_us / 1000.0
 
+
 # ============================================================================
 # Sequence Trackers
 # ============================================================================
+
 
 class SequenceTracker:
     """Base class for exchange-specific sequence validation"""
@@ -131,6 +135,7 @@ class SequenceTracker:
     
     def reset(self, sequence: int):
         raise NotImplementedError
+
 
 class BinanceSequenceTracker(SequenceTracker):
     """Binance: Range-based [U, u]"""
@@ -157,6 +162,7 @@ class BinanceSequenceTracker(SequenceTracker):
     def reset(self, sequence: int):
         self.next_expected = sequence + 1
 
+
 class BybitSequenceTracker(SequenceTracker):
     """Bybit: Simple incrementing"""
     def __init__(self, symbol: str):
@@ -180,6 +186,7 @@ class BybitSequenceTracker(SequenceTracker):
     
     def reset(self, sequence: int):
         self.next_expected = sequence + 1
+
 
 class OKXSequenceTracker(SequenceTracker):
     """OKX: Snapshot/update mode"""
@@ -210,10 +217,12 @@ class OKXSequenceTracker(SequenceTracker):
         self.next_expected = sequence + 1
         self.initialized = True
 
+
 # Similar trackers for Bitget, Huobi, Coinbase (same patterns)
 BitgetSequenceTracker = BinanceSequenceTracker
 HuobiSequenceTracker = BybitSequenceTracker
 CoinbaseSequenceTracker = BybitSequenceTracker
+
 
 def create_sequence_tracker(exchange: str, symbol: str) -> SequenceTracker:
     trackers = {
@@ -226,9 +235,11 @@ def create_sequence_tracker(exchange: str, symbol: str) -> SequenceTracker:
     }
     return trackers[exchange](symbol)
 
+
 # ============================================================================
 # Exchange Adapters
 # ============================================================================
+
 
 class BinanceAdapter:
     NAME = "binance"
@@ -303,6 +314,7 @@ class BinanceAdapter:
         except Exception as e:
             logger.error(f"[Binance] Snapshot error: {e}")
             return None
+
 
 class BybitAdapter:
     NAME = "bybit"
@@ -379,6 +391,7 @@ class BybitAdapter:
         except Exception as e:
             logger.error(f"[Bybit] Snapshot error: {e}")
             return None
+
 
 class OKXAdapter:
     NAME = "okx"
@@ -466,6 +479,7 @@ class OKXAdapter:
             logger.error(f"[OKX] Snapshot error: {e}")
             return None
 
+
 # Simplified adapters for Bitget, Huobi, Coinbase (similar patterns)
 # In production, you'd implement full versions like above
 
@@ -474,10 +488,12 @@ class BitgetAdapter(BinanceAdapter):
     WS_URL = "wss://ws.bitget.com/spot/v1/stream"
     REST_BASE = "https://api.bitget.com/api"
 
+
 class HuobiAdapter(BybitAdapter):
     NAME = "huobi"
     WS_URL = "wss://api.huobi.pro/ws"
     REST_BASE = "https://api.huobi.pro"
+
 
 class CoinbaseAdapter(OKXAdapter):
     NAME = "coinbase"
@@ -493,9 +509,11 @@ EXCHANGE_ADAPTERS = {
     'coinbase': CoinbaseAdapter
 }
 
+
 # ============================================================================
 # Symbol Validator
 # ============================================================================
+
 
 class SymbolValidator:
     def __init__(self, exchange: str, symbol: str, tracker: SequenceTracker,
@@ -591,9 +609,11 @@ class SymbolValidator:
         except Exception as e:
             logger.error(f"[{self.exchange}:{self.symbol}] Recovery error: {e}")
 
+
 # ============================================================================
 # QuestDB Writer
 # ============================================================================
+
 
 class QuestDBWriter:
     def __init__(self, host: str, port: int, table: str):
@@ -641,9 +661,11 @@ class QuestDBWriter:
             self.connect()
             return False
 
+
 # ============================================================================
 # ZeroMQ Publisher
 # ============================================================================
+
 
 class ZMQPublisher:
     def __init__(self, endpoint: str):
@@ -674,9 +696,11 @@ class ZMQPublisher:
         except Exception as e:
             logger.debug(f"[ZeroMQ] Publish error: {e}")
 
+
 # ============================================================================
 # WebSocket Ingestor
 # ============================================================================
+
 
 class WebSocketIngestor:
     def __init__(self, exchange: str, symbols: List[str], validators: Dict[str, SymbolValidator],
@@ -733,9 +757,11 @@ class WebSocketIngestor:
         
         logger.info(f"[{self.exchange}] Ingestor stopped")
 
+
 # ============================================================================
 # Writer Task
 # ============================================================================
+
 
 async def writer_task(queue: asyncio.Queue, db_writer: QuestDBWriter,
                      zmq_pub: ZMQPublisher, metrics: Metrics):
@@ -760,9 +786,11 @@ async def writer_task(queue: asyncio.Queue, db_writer: QuestDBWriter,
         except Exception as e:
             logger.error(f"[Writer] Error: {e}")
 
+
 # ============================================================================
 # Metrics Reporter
 # ============================================================================
+
 
 async def metrics_reporter(metrics: Metrics):
     while True:
@@ -774,9 +802,11 @@ async def metrics_reporter(metrics: Metrics):
         logger.info(f"Recovery: {metrics.recovery_success}/{metrics.recovery_attempts}")
         logger.info(f"Dropped: {metrics.messages_dropped}")
 
+
 # ============================================================================
 # Main
 # ============================================================================
+
 
 async def main():
     if len(sys.argv) != 2:
@@ -882,6 +912,7 @@ async def main():
     
     # Run forever
     await asyncio.gather(*tasks, return_exceptions=True)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
