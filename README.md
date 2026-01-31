@@ -1,81 +1,94 @@
-<<<<<<< HEAD
-# FBA-TD
-crypto development and hw
-=======
-# FBA-TD — Multi-Exchange Orderbook Ingestor
+# Multi-Exchange Orderbook Ingestor
 
-Purpose: lightweight, containerized multi-exchange orderbook ingestion pipeline.
+Complete production-ready orderbook ingestion system with Docker support for 6 exchanges: **Binance, Bybit, OKX, Bitget, Huobi Global, Coinbase**.
 
-Quick facts
-- Exchanges: Binance, Bybit, OKX, Bitget, Huobi, Coinbase
-- Symbols: configured in `config.json` (BTC, ETH, XRP, SOL, DOGE with USDT/USDC)
-- Data level: Level-2 snapshot + incremental updates (book bids/asks up to configured depth)
-- Storage: QuestDB (ILP TCP writes) — table configured via `config.json.questdb.table`
-- Realtime pub: ZeroMQ PUB (optional if `pyzmq` installed)
+Collects: **BTC, ETH, XRP, SOL, DOGE** pairs with **USDT & USDC** quotes.
 
-Install (local, Python)
-- Create venv (optional): `python -m venv .venv` && `.venv\Scripts\activate`
-## FBA-TD — Multi-Exchange Orderbook Ingestor
+## Quick Start (Docker - Recommended)
 
-Purpose: containerized multi-exchange Level-2 orderbook ingestion.
+Everything runs in Docker. Just one command:
 
-Quick facts
-- Exchanges: Binance, Bybit, OKX, Bitget, Huobi, Coinbase
-- Symbols: BTC, ETH, XRP, SOL, DOGE × USDT, USDC (configured in `config.json` / `generated_symbols`)
-- Data: Level-2 (price levels with quantities); snapshots + incremental updates
-- Storage: QuestDB (ILP TCP writes). Table set in `config.json.questdb.table` (example: `timequestdb`)
-- Realtime: ZeroMQ PUB (if `pyzmq` installed)
-
-Install (local)
-- `python -m venv .venv`
-- `.venv\Scripts\activate`
-- `pip install -r requirements.txt`
-
-Run (Docker - recommended)
-- `docker compose up --build -d`
-- `docker compose logs -f orderbook`
-- `docker compose down`
-
-Core components
-- `orderbook.py` — main ingest process, adapters, trackers, recovery, QuestDB writer
-- `config.json` — exchanges, symbols, questdb, zeromq, pipeline parameters
-- `zmq_subscriber.py` — example subscriber for ZeroMQ (optional)
-
-Symbol mapping (normalized vs exchange)
-- Internal normalized: `BASE/QUOTE` (e.g., `BTC/USDT`)
-- Exchange formats (examples):
-  - Binance/Bybit: `BTCUSDT`
-  - OKX/Coinbase: `BTC-USDT`
-  - Bitget: `BTCUSDT_SPBL`
-  - Huobi: `btcusdt` (lowercase)
-
-Behavior notes
-- On receiving updates: validate sequence with exchange-specific `SequenceTracker`.
-- On gap: `SymbolValidator` triggers `recover()` → calls adapter `fetch_snapshot()` and replays buffered updates.
-- Writer truncates/book-slices bids/asks and writes ILP lines to QuestDB.
-
-Troubleshooting
-- Many gaps: verify `generated_symbols` accuracy; check adapter symbol format for each exchange.
-- Increase `pipeline.max_recovery_attempts` temporarily to avoid immediate shutdown while debugging.
-- Add logging inside adapter `fetch_snapshot()` to capture HTTP status and response body.
-- QuestDB issues: verify ILP port (9009) and `config.json.questdb.host`.
-
-Commands
-```powershell
-# build & run
-docker compose up --build -d
-
-# logs
-docker compose logs -f orderbook
-
-# create questdb table example
-curl -sS "http://localhost:9000/exec?query=CREATE TABLE IF NOT EXISTS timequestdb(timestamp TIMESTAMP, seq LONG)"
+```bash
+docker compose up
 ```
 
-Files
-- `orderbook.py` (main)
-- `config.json` (symbols + mappings)
-- `requirements.txt`
+This starts:
+- **QuestDB** (time-series database on port 9000 UI, 9009 ILP)
+- **Orderbook ingestion** (connects to all 6 exchanges, publishes to ZeroMQ)
 
-Notes
-- This README is intentionally concise and technical. For changes, edit `generated_symbols` in `config.json` to match exchange REST naming.
+### View QuestDB UI
+Open browser to: http://localhost:9000
+
+### Subscribe to live orderbook updates (optional)
+
+In another terminal inside the container:
+```bash
+docker compose exec orderbook python zmq_subscriber.py
+```
+
+Or from your host (if you have zmq installed locally):
+```bash
+python zmq_subscriber.py
+```
+
+---
+
+## Local Setup (Without Docker)
+
+If you prefer to run locally without Docker:
+
+1) Install Python dependencies
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+2) Start QuestDB manually (or use Docker just for QuestDB)
+
+```bash
+docker compose up questdb -d
+```
+
+3) Run the ingestor
+
+```bash
+python orderbook.py config.json
+```
+
+4) (Optional) Run ZeroMQ subscriber in another terminal
+
+```bash
+python zmq_subscriber.py
+```
+
+---
+
+## Configuration
+
+Edit `config.json` to:
+- Enable/disable exchanges
+- Adjust recovery parameters
+- Change QuestDB host/port
+- Modify ZeroMQ endpoint
+
+---
+
+## Architecture
+
+- **Exchanges**: Each exchange has a WebSocket ingestor that validates sequence numbers and recovers from gaps.
+- **QuestDB**: Stores orderbook snapshots and updates as time-series data.
+- **ZeroMQ**: Real-time PUB/SUB for downstream consumers.
+- **Metrics**: Tracks latency, gaps, recovery success rate every 10 seconds.
+
+---
+
+## Future Expansion
+
+To add spot/future/option across all exchange intersections:
+- Extend `config.json` `symbols` section with product type
+- Add per-exchange product mappings
+- Expand symbol generation logic in `orderbook.py`
+
+Ready when you are!

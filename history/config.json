@@ -1,0 +1,36 @@
+{
+  "exchanges": [
+    {"name": "binance", "enabled": true},
+    {"name": "bybit", "enabled": true},
+    {"name": "okx", "enabled": true},
+    {"name": "bitget", "enabled": true},
+    {"name": "huobi", "enabled": true},
+    {"name": "coinbase", "enabled": true}
+  ],
+  "symbols": [
+    {"base": "BTC", "quotes": ["USDT", "USDC"]},
+    {"base": "ETH", "quotes": ["USDT", "USDC"]},
+    {"base": "DOGE", "quotes": ["USDT"]},
+    {"base": "SOL", "quotes": ["USDT"]}
+  ],
+  "generated_symbols": {
+    "binance": ["BTCUSDT", "ETHUSDT", "DOGEUSDT", "SOLUSDT"],
+    "bybit": ["BTCUSDT", "ETHUSDT", "DOGEUSDT", "SOLUSDT"],
+    "okx": ["BTC-USDT", "ETH-USDT", "DOGE-USDT", "SOL-USDT"],
+    "bitget": ["BTCUSDT_SPBL", "ETHUSDT_SPBL", "DOGEUSDT_SPBL", "SOLUSDT_SPBL"],
+    "huobi": ["btcusdt", "ethusdt", "dogeusdt", "solusdt"],
+    "coinbase": ["BTC-USDT", "ETH-USDT", "DOGE-USDT", "SOL-USDT"]
+  },
+  "questdb": {
+    "host": "questdb",
+    "port": 9009,
+    "table": "timequestdb"
+  },
+  "zeromq": {
+    "endpoint": "tcp://0.0.0.0:5556"
+  },
+  "pipeline": {
+    "recovery_cooldown_sec": 5,
+    "max_recovery_attempts": 3
+  }
+}

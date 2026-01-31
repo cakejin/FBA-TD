@@ -10,27 +10,20 @@
   "symbols": [
     {"base": "BTC", "quotes": ["USDT", "USDC"]},
     {"base": "ETH", "quotes": ["USDT", "USDC"]},
-    {"base": "DOGE", "quotes": ["USDT"]},
-    {"base": "SOL", "quotes": ["USDT"]}
+    {"base": "XRP", "quotes": ["USDT", "USDC"]},
+    {"base": "SOL", "quotes": ["USDT", "USDC"]},
+    {"base": "DOGE", "quotes": ["USDT", "USDC"]}
   ],
+  "questdb": {"host": "127.0.0.1", "port": 9009, "table": "timequestdb"},
+  "zeromq": {"endpoint": "tcp://127.0.0.1:5556"},
+  "pipeline": {"recovery_cooldown_sec": 10, "max_recovery_attempts": 3},
+
   "generated_symbols": {
-    "binance": ["BTCUSDT", "ETHUSDT", "DOGEUSDT", "SOLUSDT"],
-    "bybit": ["BTCUSDT", "ETHUSDT", "DOGEUSDT", "SOLUSDT"],
-    "okx": ["BTC-USDT", "ETH-USDT", "DOGE-USDT", "SOL-USDT"],
-    "bitget": ["BTCUSDT_SPBL", "ETHUSDT_SPBL", "DOGEUSDT_SPBL", "SOLUSDT_SPBL"],
-    "huobi": ["btcusdt", "ethusdt", "dogeusdt", "solusdt"],
-    "coinbase": ["BTC-USDT", "ETH-USDT", "DOGE-USDT", "SOL-USDT"]
-  },
-  "questdb": {
-    "host": "questdb",
-    "port": 9009,
-    "table": "timequestdb"
-  },
-  "zeromq": {
-    "endpoint": "tcp://0.0.0.0:5556"
-  },
-  "pipeline": {
-    "recovery_cooldown_sec": 5,
-    "max_recovery_attempts": 3
+    "binance": ["BTCUSDT","BTCUSDC","ETHUSDT","ETHUSDC","XRPUSDT","XRPUSDC","SOLUSDT","SOLUSDC","DOGEUSDT","DOGEUSDC"],
+    "bybit": ["BTCUSDT","BTCUSDC","ETHUSDT","ETHUSDC","XRPUSDT","XRPUSDC","SOLUSDT","SOLUSDC","DOGEUSDT","DOGEUSDC"],
+    "okx": ["BTC-USDT","BTC-USDC","ETH-USDT","ETH-USDC","XRP-USDT","XRP-USDC","SOL-USDT","SOL-USDC","DOGE-USDT","DOGE-USDC"],
+    "bitget": ["BTCUSDT_SPBL","BTCUSDC_SPBL","ETHUSDT_SPBL","ETHUSDC_SPBL","XRPUSDT_SPBL","XRPUSDC_SPBL","SOLUSDT_SPBL","SOLUSDC_SPBL","DOGEUSDT_SPBL","DOGEUSDC_SPBL"],
+    "huobi": ["btcusdt","btcusdc","ethusdt","ethusdc","xrpusdt","xrpusdc","solusdt","solusdc","dogeusdt","dogeusdc"],
+    "coinbase": ["BTC-USDT","BTC-USDC","ETH-USDT","ETH-USDC","XRP-USDT","XRP-USDC","SOL-USDT","SOL-USDC","DOGE-USDT","DOGE-USDC"]
   }
 }

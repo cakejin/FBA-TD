@@ -466,31 +466,141 @@ class OKXAdapter:
             logger.error(f"[OKX] Snapshot error: {e}")
             return None
 
-# Simplified adapters for Bitget, Huobi, Coinbase (similar patterns)
-# In production, you'd implement full versions like above
+# ============================================================================
+# TODO ASSIGNMENT: Implement the remaining exchange adapters (Bitget, Huobi, Coinbase)
+# ============================================================================
+#
+# Why this exists:
+# - Binance / Bybit / OKX adapters are implemented as worked examples.
+# - For Bitget / Huobi / Coinbase, you must read the official docs and implement:
+#   (1) websocket_url()
+#   (2) subscribe_message()
+#   (3) parse_message()  -> return OrderBookUpdate
+#   (4) fetch_snapshot() -> REST snapshot used for recovery on gaps
+#
+# Tip:
+# - Keep the internal schema consistent:
+#   * OrderBookUpdate.bids / asks: List[Tuple[price(float), qty(float)]]
+#   * OrderBookUpdate.sequence: integer-like monotonic value (or best available)
+#   * OrderBookUpdate.event_time_us: microseconds (NOT milliseconds)
+#   * OrderBookUpdate.is_snapshot: True only for an initial snapshot (or explicit snapshot event)
+#
+# References (official):
+# - Bitget Spot WS Depth: https://bitgetlimited.github.io/apidoc/en/spot/
+# - Huobi Spot WS Depth: https://huobiapi.github.io/docs/spot/v1/en/
+# - Coinbase Advanced Trade WS Level2: https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/websocket/websocket-channels#level2-channel
+#
+# NOTE: Some exchanges deliver incremental price-level patches. If so, you must
+# maintain a local book (recommended) and output a top-N snapshot to QuestDB.
+#
+# ----------------------------------------------------------------------------
 
-class BitgetAdapter(BinanceAdapter):
+class BitgetAdapter:
     NAME = "bitget"
-    WS_URL = "wss://ws.bitget.com/spot/v1/stream"
-    REST_BASE = "https://api.bitget.com/api"
+    WS_BASE = "wss://ws.bitget.com/spot/v1/stream"
+    REST_BASE = "https://api.bitget.com"
 
-class HuobiAdapter(BybitAdapter):
+    @staticmethod
+    def websocket_url(symbols: List[str]) -> str:
+        # TODO: return the correct WS URL (Bitget Spot uses a single endpoint).
+        raise NotImplementedError
+
+    @staticmethod
+    def subscribe_message(symbols: List[str]) -> Optional[dict]:
+        # TODO: build a subscribe payload for depth.
+        # Example (from docs):
+        # {"op":"subscribe","args":[{"instType":"sp","channel":"books15","instId":"BTCUSDT"}]}
+        raise NotImplementedError
+
+    @staticmethod
+    async def parse_message(msg: str) -> Optional[OrderBookUpdate]:
+        # TODO: parse snapshot/update push messages into OrderBookUpdate.
+        # Required fields:
+        # - exchange_symbol: arg.instId
+        # - sequence: choose an integer-like monotonic value (e.g., data[0].ts)
+        # - event_time_us: convert ms -> us
+        # - bids/asks: [[price, size], ...] -> [(float, float), ...]
+        raise NotImplementedError
+
+    @staticmethod
+    async def fetch_snapshot(session: aiohttp.ClientSession, symbol: str) -> Optional[OrderBookUpdate]:
+        # TODO: implement REST snapshot, used when a gap is detected.
+        # Example endpoint family: /api/spot/v1/market/merge-depth?symbol=BTCUSDT&limit=20
+        raise NotImplementedError
+
+
+class HuobiAdapter:
     NAME = "huobi"
-    WS_URL = "wss://api.huobi.pro/ws"
+    WS_BASE = "wss://api.huobi.pro/ws"
     REST_BASE = "https://api.huobi.pro"
 
-class CoinbaseAdapter(OKXAdapter):
+    @staticmethod
+    def websocket_url(symbols: List[str]) -> str:
+        # Huobi uses a single endpoint
+        return HuobiAdapter.WS_BASE
+
+    @staticmethod
+    def subscribe_message(symbols: List[str]) -> Optional[dict]:
+        # TODO: Build a per-symbol subscription message.
+        # Option A (simpler snapshot): {"sub":"market.btcusdt.depth.step0","id":"..."}
+        # Option B (lower latency):    {"sub":"market.btcusdt.mbp.20","id":"..."}  (has seqNum)
+        raise NotImplementedError
+
+    @staticmethod
+    async def parse_message(msg: str) -> Optional[OrderBookUpdate]:
+        # TODO: Huobi commonly sends gzip-compressed frames and {"ping":...} heartbeats.
+        # Implement:
+        # - If msg is bytes: gzip-decompress to JSON text
+        # - If {"ping": ts}: respond {"pong": ts} (see WebSocketIngestor TODO)
+        # - Parse bids/asks + version/seqNum into OrderBookUpdate
+        raise NotImplementedError
+
+    @staticmethod
+    async def fetch_snapshot(session: aiohttp.ClientSession, symbol: str) -> Optional[OrderBookUpdate]:
+        # TODO: implement REST snapshot for recovery:
+        # GET /market/depth?symbol=btcusdt&type=step0&depth=20
+        raise NotImplementedError
+
+
+class CoinbaseAdapter:
     NAME = "coinbase"
-    WS_URL = "wss://advanced-trade-ws.coinbase.com"
+    WS_BASE = "wss://advanced-trade-ws.coinbase.com"
     REST_BASE = "https://api.exchange.coinbase.com"
 
+    @staticmethod
+    def websocket_url(symbols: List[str]) -> str:
+        return CoinbaseAdapter.WS_BASE
+
+    @staticmethod
+    def subscribe_message(symbols: List[str]) -> Optional[dict]:
+        # TODO: subscribe to the level2 channel with product_ids ["BTC-USD", ...]
+        raise NotImplementedError
+
+    @staticmethod
+    async def parse_message(msg: str) -> Optional[OrderBookUpdate]:
+        # TODO: Parse messages for the level2 channel.
+        # The docs show: message.sequence_num and message.events[] with type snapshot/update.
+        # Choose one implementation:
+        # (A) Treat updates as deltas and rebuild a local book in SymbolValidator (recommended), or
+        # (B) Maintain a local book in this adapter and output top-N each message.
+        raise NotImplementedError
+
+    @staticmethod
+    async def fetch_snapshot(session: aiohttp.ClientSession, symbol: str) -> Optional[OrderBookUpdate]:
+        # TODO: Use Coinbase Exchange REST "Get product book":
+        # GET /products/{product_id}/book?level=2
+        raise NotImplementedError
+
+# ----------------------------------------------------------------------------
+# Adapter registry
+# ----------------------------------------------------------------------------
 EXCHANGE_ADAPTERS = {
     'binance': BinanceAdapter,
     'bybit': BybitAdapter,
     'okx': OKXAdapter,
     'bitget': BitgetAdapter,
     'huobi': HuobiAdapter,
-    'coinbase': CoinbaseAdapter
+    'coinbase': CoinbaseAdapter,
 }
 
 # ============================================================================
@@ -501,7 +611,8 @@ class SymbolValidator:
     def __init__(self, exchange: str, symbol: str, tracker: SequenceTracker,
                  adapter, metrics: Metrics, config: Config):
         self.exchange = exchange
-        self.symbol = symbol
+        self.symbol = symbol  # normalized, e.g. BTC/USDT
+        self.exchange_symbol = exchange_symbol  # exchange-specific, e.g. BTCUSDT / BTC-USD
         self.tracker = tracker
         self.adapter = adapter
         self.metrics = metrics
@@ -835,7 +946,7 @@ async def main():
                     norm_symbol = ex_symbol
 
                 tracker = create_sequence_tracker(ex_name, norm_symbol)
-                validator = SymbolValidator(ex_name, norm_symbol, tracker, adapter, metrics, config)
+                validator = SymbolValidator(ex_name, norm_symbol, ex_symbol, tracker, adapter, metrics, config)
                 validators[ex_symbol] = validator
         else:
             for sym_config in config.symbols:
@@ -855,7 +966,7 @@ async def main():
 
                     norm_symbol = f"{base}/{quote}"
                     tracker = create_sequence_tracker(ex_name, norm_symbol)
-                    validator = SymbolValidator(ex_name, norm_symbol, tracker, adapter, metrics, config)
+                    validator = SymbolValidator(ex_name, norm_symbol, ex_symbol, tracker, adapter, metrics, config)
                     validators[ex_symbol] = validator
         
         # Create ingestor

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  questdb:
+    image: questdb/questdb:latest
+    container_name: questdb
+    ports:
+      - "9000:9000" # QuestDB web console
+      - "9009:9009" # ILP (Line Protocol) TCP port
+    restart: unless-stopped
+    volumes:
+      - questdb_data:/root/.questdb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - orderbook_net
+
+  orderbook:
+    build: .
+    container_name: orderbook
+    depends_on:
+      - questdb
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./config.json:/app/config.json
+      - ./orderbook.py:/app/orderbook.py
+      - ./zmq_subscriber.py:/app/zmq_subscriber.py
+    ports:
+      - "5556:5556" # ZeroMQ PUB endpoint
+    networks:
+      - orderbook_net
+    restart: unless-stopped
+
+volumes:
+  questdb_data:
+
+networks:
+  orderbook_net:
+    driver: bridge
